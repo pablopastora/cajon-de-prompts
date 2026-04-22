@@ -101,5 +101,5 @@ En unos segundos verás **"Ollama: conectado"** en la esquina inferior izquierda
 
 ## Créditos
 
-Creado en el Curso de Herramientas IA para la Investigación Doctoral — Universidad de Málaga.  
-Construido con [Claude](https://claude.ai) sin escribir una línea de código a mano.
+Pablo Pastora Estebanez - Universidad de Málaga.  
+Construido con [Claude](https://claude.ai) 
