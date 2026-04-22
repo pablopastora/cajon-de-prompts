@@ -29,7 +29,6 @@ Una herramienta sencilla para investigadores que acumulan prompts útiles disper
 2. Ábrelo en tu navegador
 3. Listo
 
-> ⚠ **Importante:** abre siempre la app desde `http://localhost:8080` usando el servidor Python o el archivo `.bat` — no con doble clic directo sobre el HTML. Si la abres directamente, los prompts no se guardarán correctamente.
 
 ---
 
