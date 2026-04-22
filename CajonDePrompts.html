@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cajón de Prompts — Biblioteca de Prompts para Investigación</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #13161d;
+    --surface2: #1a1e28;
+    --border: #232736;
+    --border2: #2e3347;
+    --text: #e8eaf0;
+    --text2: #8b90a0;
+    --text3: #555a6e;
+    --accent: #7c6af7;
+    --accent2: #5b4fd4;
+    --accent-glow: rgba(124,106,247,0.18);
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --teal: #22d3ee;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* ── Layout ── */
+  .app { display: flex; height: 100vh; overflow: hidden; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .logo {
+    padding: 20px 18px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 20px;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+  .logo-sub {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+    margin-top: 2px;
+  }
+
+  .nav { flex: 1; padding: 12px 10px; overflow-y: auto; }
+
+  .nav-section-label {
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 8px 8px 4px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-bottom: 2px;
+    color: var(--text2);
+    font-size: 13px;
+    position: relative;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active {
+    background: var(--accent-glow);
+    color: var(--accent);
+    border: 1px solid rgba(124,106,247,0.25);
+  }
+  .nav-item .icon { font-size: 14px; width: 18px; text-align: center; }
+  .nav-item .count {
+    margin-left: auto;
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    background: var(--border2);
+    padding: 1px 6px;
+    border-radius: 10px;
+    color: var(--text3);
+  }
+  .nav-item.active .count { background: rgba(124,106,247,0.3); color: var(--accent); }
+
+  .sidebar-footer {
+    padding: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .ollama-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .ollama-status:hover { border-color: var(--border2); }
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--text3);
+    flex-shrink: 0;
+    transition: all 0.3s;
+  }
+  .status-dot.connected { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .status-dot.loading { background: var(--amber); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+  /* ── Main ── */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── Topbar ── */
+  .topbar {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .search-wrap {
+    flex: 1;
+    position: relative;
+    max-width: 400px;
+  }
+  .search-icon {
+    position: absolute;
+    left: 11px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--text3);
+    font-size: 13px;
+    pointer-events: none;
+  }
+  .search-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px 8px 32px;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--text3); }
+
+  .topbar-actions { display: flex; gap: 8px; margin-left: auto; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: var(--radius-sm);
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+    outline: none;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text2);
+    border-color: var(--border);
+  }
+  .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+  /* ── Content area ── */
+  .content { flex: 1; overflow-y: auto; padding: 20px; }
+
+  /* ── Section header ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .section-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 22px;
+    color: var(--text);
+    font-style: italic;
+  }
+  .section-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+    background: var(--surface2);
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+  }
+
+  /* ── Sort/filter bar ── */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .filter-chip {
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text2);
+    cursor: pointer;
+    background: transparent;
+    font-family: 'Outfit', sans-serif;
+    transition: all 0.15s;
+  }
+  .filter-chip:hover { border-color: var(--border2); color: var(--text); }
+  .filter-chip.active {
+    background: var(--accent-glow);
+    border-color: rgba(124,106,247,0.4);
+    color: var(--accent);
+  }
+
+  /* ── Prompt cards grid ── */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 14px;
+  }
+
+  /* ── Prompt card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .card:hover { border-color: var(--border2); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+  .card:hover::before { opacity: 1; }
+
+  .card-header { display: flex; align-items: flex-start; gap: 10px; }
+  .card-cat-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .card-title-wrap { flex: 1; min-width: 0; }
+  .card-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-cat-label { font-size: 11px; color: var(--text3); margin-top: 1px; }
+
+  .card-body {
+    font-size: 12.5px;
+    color: var(--text2);
+    line-height: 1.55;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-family: 'DM Mono', monospace;
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+  }
+
+  .card-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    background: rgba(34,211,238,0.08);
+    color: var(--teal);
+    border: 1px solid rgba(34,211,238,0.2);
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-top: 4px;
+    border-top: 1px solid var(--border);
+  }
+  .card-uses {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text3);
+  }
+  .card-actions { display: flex; gap: 6px; margin-left: auto; }
+  .icon-btn {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    transition: all 0.15s;
+  }
+  .icon-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+  .icon-btn.danger:hover { background: rgba(248,113,113,0.1); color: var(--red); border-color: rgba(248,113,113,0.3); }
+  .icon-btn.success:hover { background: rgba(52,211,153,0.1); color: var(--green); border-color: rgba(52,211,153,0.3); }
+
+  /* ── Empty state ── */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text3);
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-title { font-family: 'Instrument Serif', serif; font-size: 20px; color: var(--text2); margin-bottom: 6px; }
+  .empty-sub { font-size: 13px; }
+
+  /* ── Modal overlay ── */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 640px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+    transform: translateY(10px);
+    transition: transform 0.2s;
+  }
+  .overlay.open .modal { transform: translateY(0); }
+
+  .modal-header {
+    padding: 20px 24px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .modal-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 20px;
+    font-style: italic;
+  }
+  .modal-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+  .modal-footer {
+    padding: 14px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-label { font-size: 12px; color: var(--text2); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-input, .form-select, .form-textarea {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 9px 12px;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent); }
+  .form-textarea { resize: vertical; min-height: 120px; font-family: 'DM Mono', monospace; font-size: 12.5px; line-height: 1.6; }
+  .form-select option { background: var(--surface2); }
+
+  /* ── AI improve panel ── */
+  .ai-panel {
+    background: var(--surface2);
+    border: 1px solid rgba(124,106,247,0.3);
+    border-radius: var(--radius);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .ai-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .ai-result {
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.6;
+  }
+  .ai-tips { display: flex; flex-direction: column; gap: 5px; }
+  .ai-tip {
+    display: flex;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text2);
+    align-items: flex-start;
+  }
+  .ai-tip-dot { color: var(--accent); flex-shrink: 0; margin-top: 2px; }
+  .ai-score {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    color: var(--green);
+  }
+
+  /* ── Detail modal ── */
+  .detail-prompt {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12.5px;
+    color: var(--text);
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 10px 16px;
+    font-size: 13px;
+    color: var(--text);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transform: translateY(10px);
+    opacity: 0;
+    transition: all 0.25s;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.ok { border-color: rgba(52,211,153,0.4); }
+  .toast.err { border-color: rgba(248,113,113,0.4); }
+
+  /* ── Stats bar ── */
+  .stats-bar {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 16px;
+    flex: 1;
+    min-width: 100px;
+  }
+  .stat-value {
+    font-family: 'Instrument Serif', serif;
+    font-size: 24px;
+    color: var(--text);
+    font-style: italic;
+  }
+  .stat-label { font-size: 11px; color: var(--text3); margin-top: 1px; }
+
+  /* ── Ollama modal ── */
+  .ollama-info {
+    font-size: 12.5px;
+    color: var(--text2);
+    line-height: 1.7;
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    border: 1px solid var(--border);
+    font-family: 'DM Mono', monospace;
+  }
+  .code-inline {
+    background: rgba(124,106,247,0.15);
+    color: var(--accent);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+  }
+
+  @media (max-width: 700px) {
+    .sidebar { width: 180px; }
+    .cards-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-title">Cajón de Prompts</div>
+      <div class="logo-sub">// para investigación</div>
+    </div>
+
+    <nav class="nav" id="nav">
+      <div class="nav-section-label">Categorías</div>
+      <!-- rendered by JS -->
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="ollama-status" id="ollamaStatus" onclick="openOllamaModal()">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Ollama: no conectado</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input class="search-input" id="searchInput" placeholder="Buscar prompts, etiquetas…" oninput="render()">
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="exportData()">↑ Exportar</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">↓ Importar</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+        <button class="btn btn-primary" onclick="openNew()">＋ Nuevo prompt</button>
+      </div>
+    </div>
+
+    <div class="content" id="content">
+      <!-- rendered by JS -->
+    </div>
+  </main>
+</div>
+
+<!-- ── MODAL: New/Edit Prompt ── -->
+<div class="overlay" id="formOverlay" onclick="closeFormIfBg(event)">
+  <div class="modal" id="formModal">
+    <div class="modal-header">
+      <div class="modal-title" id="formTitle">Nuevo prompt</div>
+      <button class="icon-btn" onclick="closeForm()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Título *</label>
+        <input class="form-input" id="fTitle" placeholder="Ej: Revisión sistemática de literatura">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Categoría *</label>
+        <select class="form-select" id="fCategory"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Etiquetas <span style="color:var(--text3);text-transform:none;font-size:11px;">(separadas por comas)</span></label>
+        <input class="form-input" id="fTags" placeholder="revisión, literatura, metodología">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Prompt *</label>
+        <textarea class="form-textarea" id="fContent" style="min-height:160px" placeholder="Escribe tu prompt aquí. Usa [VARIABLE] para partes que cambias cada vez…"></textarea>
+      </div>
+
+      <!-- AI Panel -->
+      <div class="ai-panel" id="aiPanel" style="display:none">
+        <div class="ai-panel-header">
+          <span>✦</span>
+          <span>Análisis de IA (Ollama/Llama)</span>
+          <span id="aiScore" class="ai-score" style="margin-left:auto"></span>
+        </div>
+        <div id="aiContent"></div>
+      </div>
+
+      <button class="btn btn-ghost" id="aiBtn" onclick="improveWithAI()" style="width:100%;justify-content:center">
+        ✦ Mejorar con IA (requiere Ollama)
+      </button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeForm()">Cancelar</button>
+      <button class="btn btn-primary" onclick="savePrompt()">Guardar prompt</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: Detail/View ── -->
+<div class="overlay" id="detailOverlay" onclick="closeDetailIfBg(event)">
+  <div class="modal" id="detailModal">
+    <div class="modal-header">
+      <div class="modal-title" id="detailTitle">—</div>
+      <button class="icon-btn" onclick="closeDetail()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="detailMeta" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px"></div>
+      <div class="detail-prompt" id="detailContent"></div>
+      <div id="detailAiSection" style="display:none">
+        <div class="ai-panel">
+          <div class="ai-panel-header"><span>✦</span><span>Sugerencias IA</span><span id="detailScore" class="ai-score" style="margin-left:auto"></span></div>
+          <div id="detailAiContent" class="ai-result"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="copyPrompt()">⧉ Copiar</button>
+      <button class="btn btn-ghost" id="detailImproveBtn" onclick="improveDetailWithAI()">✦ Mejorar con IA</button>
+      <button class="btn btn-primary" onclick="editFromDetail()">✎ Editar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: Ollama setup ── -->
+<div class="overlay" id="ollamaOverlay" onclick="if(event.target===this)closeOllama()">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div class="modal-title">Configurar Ollama + Llama</div>
+      <button class="icon-btn" onclick="closeOllama()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="ai-result" style="margin-bottom:6px">
+        Ollama te permite usar modelos de IA <strong>de forma completamente gratuita y local</strong>, sin enviar nada a internet. Aquí te explicamos cómo instalarlo:
+      </div>
+      <div class="ollama-info">
+        <strong style="color:var(--text)">1. Instalar Ollama</strong><br>
+        → Visita <strong>ollama.com</strong> y descarga para tu sistema (Windows/Mac/Linux).<br><br>
+        <strong style="color:var(--text)">2. Descargar el modelo Llama</strong><br>
+        → Abre una terminal y ejecuta:<br>
+        <span class="code-inline">ollama pull llama3.2</span><br><br>
+        <strong style="color:var(--text)">3. Ejecutar Ollama con CORS</strong><br>
+        → En la terminal ejecuta:<br>
+        <span class="code-inline">OLLAMA_ORIGINS=* ollama serve</span><br>
+        (en Windows: usa las variables de entorno del sistema)<br><br>
+        <strong style="color:var(--text)">4. Volver aquí y probar la conexión</strong>
+      </div>
+      <div class="form-group">
+        <label class="form-label">URL de Ollama</label>
+        <input class="form-input" id="ollamaUrl" value="http://localhost:11434" placeholder="http://localhost:11434">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Modelo</label>
+        <input class="form-input" id="ollamaModel" value="llama3.2" placeholder="llama3.2">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeOllama()">Cerrar</button>
+      <button class="btn btn-primary" onclick="testOllama()">Probar conexión</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────────────────────
+
+const CATS = [
+  { id: "all",         label: "Todos",                  icon: "◈" },
+  { id: "busqueda",    label: "Búsqueda bibliográfica",  icon: "🔍" },
+  { id: "escritura",   label: "Escritura académica",     icon: "✍️" },
+  { id: "analisis",    label: "Análisis de datos",       icon: "📊" },
+  { id: "revision",    label: "Revisión y feedback",     icon: "🔄" },
+  { id: "metodologia", label: "Metodología",             icon: "⚗️" },
+  { id: "presentacion",label: "Presentación",            icon: "🎤" },
+  { id: "otros",       label: "Otros",                   icon: "✦"  },
+];
+
+const SAMPLE = [
+  { id: uid(), title: "Revisión sistemática de literatura", category: "busqueda", tags: ["literatura","revisión","estado del arte"], uses: 0,
+    content: "Actúa como un experto en metodología de investigación. Necesito que me ayudes a hacer una revisión sistemática de la literatura sobre [TEMA]. Por favor: 1) Identifica los conceptos clave y sus sinónimos, 2) Sugiere bases de datos y términos de búsqueda en español e inglés, 3) Propone criterios de inclusión/exclusión, 4) Indica cómo organizar y sintetizar los hallazgos en una tabla comparativa." },
+  { id: uid(), title: "Redacción de abstract académico", category: "escritura", tags: ["abstract","resumen","publicación"], uses: 0,
+    content: "Eres un editor académico experto. Ayúdame a redactar un abstract para mi artículo sobre [TEMA] siguiendo esta estructura: Contexto/Problema (1-2 frases), Objetivo (1 frase), Metodología (2-3 frases), Resultados principales (2-3 frases), Conclusión e implicaciones (1-2 frases). El abstract debe tener máximo [N] palabras y orientarse a la revista [REVISTA]. Aquí está mi borrador: [BORRADOR]" },
+  { id: uid(), title: "Interpretación de resultados estadísticos", category: "analisis", tags: ["estadística","regresión","interpretación"], uses: 0,
+    content: "Actúa como un estadístico especializado en ciencias sociales. Tengo los siguientes resultados de [TIPO DE ANÁLISIS]: [PEGAR RESULTADOS]. Por favor: 1) Explica qué significa cada estadístico en términos sustantivos no técnicos, 2) Identifica los hallazgos más relevantes, 3) Señala posibles limitaciones o advertencias metodológicas, 4) Sugiere cómo presentarlos en un artículo académico para la revista [REVISTA]." },
+  { id: uid(), title: "Respuesta a revisores de artículo", category: "revision", tags: ["peer review","revisores","carta respuesta"], uses: 0,
+    content: "Eres un investigador senior con amplia experiencia en publicación académica. Tengo el siguiente comentario de un revisor para mi artículo en [REVISTA]: [COMENTARIO DEL REVISOR]. El comentario pide [RESUMEN DEL PROBLEMA]. Ayúdame a: 1) Redactar una respuesta académica respetuosa y argumentada, 2) Sugerir qué cambios hacer en el texto del artículo, 3) Indicar cómo justificar si decido no incorporar el cambio. Contexto del artículo: [CONTEXTO]." },
+  { id: uid(), title: "Diseño de metodología de investigación", category: "metodologia", tags: ["diseño","metodología","investigación"], uses: 0,
+    content: "Actúa como un metodólogo experto en ciencias sociales. Quiero diseñar una investigación sobre [TEMA] con el objetivo de [OBJETIVO]. Mi pregunta de investigación es: [PREGUNTA]. Por favor: 1) Recomienda el enfoque metodológico más adecuado y justifica por qué, 2) Describe el diseño de investigación paso a paso, 3) Indica las técnicas de recogida y análisis de datos más apropiadas, 4) Señala las principales limitaciones y cómo mitigarlas." },
+];
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+function load() {
+  const raw = localStorage.getItem('cajon-de-prompts_prompts');
+  if (!raw) { save(SAMPLE); return SAMPLE; }
+  return JSON.parse(raw);
+}
+
+function save(prompts) {
+  localStorage.setItem('cajon-de-prompts_prompts', JSON.stringify(prompts));
+}
+
+let prompts = load();
+let currentCat = "all";
+let editingId = null;
+let detailId = null;
+let ollamaUrl = localStorage.getItem('ollama_url') || 'http://localhost:11434';
+let ollamaModel = localStorage.getItem('ollama_model') || 'llama3.2';
+let ollamaConnected = false;
+
+// ── RENDER ──────────────────────────────────────────────────────────────────
+
+function render() {
+  renderNav();
+  renderContent();
+}
+
+function renderNav() {
+  const nav = document.getElementById('nav');
+  const counts = {};
+  CATS.forEach(c => counts[c.id] = 0);
+  prompts.forEach(p => { counts[p.category] = (counts[p.category] || 0) + 1; });
+  counts.all = prompts.length;
+
+  nav.innerHTML = CATS.map(c => `
+    <div class="nav-item ${currentCat === c.id ? 'active' : ''}" onclick="setCategory('${c.id}')">
+      <span class="icon">${c.icon}</span>
+      <span>${c.label}</span>
+      <span class="count">${counts[c.id] || 0}</span>
+    </div>
+  `).join('');
+}
+
+function renderContent() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const filtered = prompts.filter(p => {
+    const catOk = currentCat === 'all' || p.category === currentCat;
+    const searchOk = !q || p.title.toLowerCase().includes(q) || p.content.toLowerCase().includes(q) || (p.tags||[]).some(t => t.toLowerCase().includes(q));
+    return catOk && searchOk;
+  });
+
+  const catLabel = CATS.find(c => c.id === currentCat)?.label || 'Todos';
+  const totalUses = prompts.reduce((a,p) => a + (p.uses||0), 0);
+  const cats = new Set(prompts.map(p => p.category)).size;
+
+  let html = `
+    <div class="stats-bar">
+      <div class="stat-card"><div class="stat-value">${prompts.length}</div><div class="stat-label">Prompts guardados</div></div>
+      <div class="stat-card"><div class="stat-value">${cats}</div><div class="stat-label">Categorías en uso</div></div>
+      <div class="stat-card"><div class="stat-value">${totalUses}</div><div class="stat-label">Usos acumulados</div></div>
+    </div>
+    <div class="section-header">
+      <div class="section-title">${catLabel}</div>
+      <div class="section-count">${filtered.length} resultado${filtered.length !== 1 ? 's' : ''}</div>
+    </div>`;
+
+  if (filtered.length === 0) {
+    html += `<div class="empty">
+      <div class="empty-icon">⌕</div>
+      <div class="empty-title">Sin resultados</div>
+      <div class="empty-sub">Prueba otra búsqueda o crea un nuevo prompt</div>
+    </div>`;
+  } else {
+    html += `<div class="cards-grid">${filtered.map(cardHTML).join('')}</div>`;
+  }
+
+  document.getElementById('content').innerHTML = html;
+}
+
+function cardHTML(p) {
+  const cat = CATS.find(c => c.id === p.category) || CATS[CATS.length-1];
+  const tagsHTML = (p.tags||[]).slice(0,3).map(t => `<span class="tag">${t}</span>`).join('');
+  const preview = p.content.replace(/\n/g,' ').substring(0, 180);
+  return `
+    <div class="card" onclick="openDetail('${p.id}')">
+      <div class="card-header">
+        <div class="card-cat-icon">${cat.icon}</div>
+        <div class="card-title-wrap">
+          <div class="card-title">${p.title}</div>
+          <div class="card-cat-label">${cat.label}</div>
+        </div>
+      </div>
+      <div class="card-body">${preview}${p.content.length > 180 ? '…' : ''}</div>
+      ${tagsHTML ? `<div class="card-tags">${tagsHTML}</div>` : ''}
+      <div class="card-footer">
+        <span class="card-uses">⟳ ${p.uses||0} usos</span>
+        <div class="card-actions">
+          <button class="icon-btn success" title="Copiar prompt" onclick="event.stopPropagation();copyById('${p.id}')">⧉</button>
+          <button class="icon-btn" title="Editar" onclick="event.stopPropagation();openEdit('${p.id}')">✎</button>
+          <button class="icon-btn danger" title="Eliminar" onclick="event.stopPropagation();deletePrompt('${p.id}')">✕</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── CATEGORY ─────────────────────────────────────────────────────────────────
+
+function setCategory(id) { currentCat = id; render(); }
+
+// ── FORM MODAL ───────────────────────────────────────────────────────────────
+
+function openNew() {
+  editingId = null;
+  document.getElementById('formTitle').textContent = 'Nuevo prompt';
+  document.getElementById('fTitle').value = '';
+  document.getElementById('fTags').value = '';
+  document.getElementById('fContent').value = '';
+  document.getElementById('aiPanel').style.display = 'none';
+  populateCatSelect();
+  document.getElementById('formOverlay').classList.add('open');
+}
+
+function openEdit(id) {
+  const p = prompts.find(x => x.id === id);
+  if (!p) return;
+  editingId = id;
+  document.getElementById('formTitle').textContent = 'Editar prompt';
+  document.getElementById('fTitle').value = p.title;
+  document.getElementById('fTags').value = (p.tags||[]).join(', ');
+  document.getElementById('fContent').value = p.content;
+  document.getElementById('aiPanel').style.display = 'none';
+  populateCatSelect(p.category);
+  document.getElementById('formOverlay').classList.add('open');
+}
+
+function populateCatSelect(selected) {
+  const sel = document.getElementById('fCategory');
+  sel.innerHTML = CATS.filter(c => c.id !== 'all').map(c =>
+    `<option value="${c.id}" ${c.id === (selected || currentCat || 'otros') ? 'selected' : ''}>${c.icon} ${c.label}</option>`
+  ).join('');
+}
+
+function closeForm() { document.getElementById('formOverlay').classList.remove('open'); editingId = null; }
+function closeFormIfBg(e) { if (e.target === document.getElementById('formOverlay')) closeForm(); }
+
+function savePrompt() {
+  const title = document.getElementById('fTitle').value.trim();
+  const content = document.getElementById('fContent').value.trim();
+  const category = document.getElementById('fCategory').value;
+  const tags = document.getElementById('fTags').value.split(',').map(t => t.trim()).filter(Boolean);
+
+  if (!title || !content) { toast('Título y prompt son obligatorios', 'err'); return; }
+
+  if (editingId) {
+    const idx = prompts.findIndex(p => p.id === editingId);
+    prompts[idx] = { ...prompts[idx], title, content, category, tags };
+  } else {
+    prompts.unshift({ id: uid(), title, content, category, tags, uses: 0 });
+  }
+  save(prompts);
+  closeForm();
+  render();
+  toast(editingId ? 'Prompt actualizado ✓' : 'Prompt guardado ✓', 'ok');
+}
+
+// ── DETAIL MODAL ─────────────────────────────────────────────────────────────
+
+function openDetail(id) {
+  const p = prompts.find(x => x.id === id);
+  if (!p) return;
+  detailId = id;
+  p.uses = (p.uses || 0) + 1;
+  save(prompts);
+
+  const cat = CATS.find(c => c.id === p.category) || CATS[CATS.length-1];
+  document.getElementById('detailTitle').textContent = p.title;
+  document.getElementById('detailContent').textContent = p.content;
+
+  const tags = (p.tags||[]).map(t => `<span class="tag">${t}</span>`).join('');
+  document.getElementById('detailMeta').innerHTML = `
+    <span class="tag" style="background:rgba(124,106,247,0.12);color:var(--accent);border-color:rgba(124,106,247,0.3)">${cat.icon} ${cat.label}</span>
+    ${tags}
+    <span style="margin-left:auto;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">⟳ ${p.uses} usos</span>
+  `;
+
+  document.getElementById('detailAiSection').style.display = 'none';
+  document.getElementById('detailOverlay').classList.add('open');
+  render();
+}
+
+function closeDetail() { document.getElementById('detailOverlay').classList.remove('open'); detailId = null; }
+function closeDetailIfBg(e) { if (e.target === document.getElementById('detailOverlay')) closeDetail(); }
+
+function editFromDetail() { closeDetail(); openEdit(detailId); }
+
+function copyPrompt() {
+  const p = prompts.find(x => x.id === detailId);
+  if (!p) return;
+  navigator.clipboard.writeText(p.content).then(() => toast('Copiado al portapapeles ✓', 'ok'));
+}
+
+function copyById(id) {
+  const p = prompts.find(x => x.id === id);
+  if (!p) return;
+  navigator.clipboard.writeText(p.content).then(() => toast('Copiado ✓', 'ok'));
+}
+
+// ── DELETE ────────────────────────────────────────────────────────────────────
+
+function deletePrompt(id) {
+  if (!confirm('¿Eliminar este prompt? Esta acción no se puede deshacer.')) return;
+  prompts = prompts.filter(p => p.id !== id);
+  save(prompts);
+  render();
+  toast('Prompt eliminado', 'ok');
+}
+
+// ── EXPORT / IMPORT ───────────────────────────────────────────────────────────
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(prompts, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `cajon-de-prompts-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  toast('Exportado correctamente ✓', 'ok');
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!Array.isArray(data)) throw new Error();
+      const existing = new Set(prompts.map(p => p.id));
+      const news = data.filter(p => !existing.has(p.id));
+      prompts = [...news, ...prompts];
+      save(prompts);
+      render();
+      toast(`${news.length} prompts importados ✓`, 'ok');
+    } catch { toast('Archivo inválido', 'err'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ── OLLAMA ────────────────────────────────────────────────────────────────────
+
+function openOllamaModal() {
+  document.getElementById('ollamaUrl').value = ollamaUrl;
+  document.getElementById('ollamaModel').value = ollamaModel;
+  document.getElementById('ollamaOverlay').classList.add('open');
+}
+function closeOllama() { document.getElementById('ollamaOverlay').classList.remove('open'); }
+
+async function testOllama() {
+  ollamaUrl = document.getElementById('ollamaUrl').value.trim();
+  ollamaModel = document.getElementById('ollamaModel').value.trim();
+  localStorage.setItem('ollama_url', ollamaUrl);
+  localStorage.setItem('ollama_model', ollamaModel);
+
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  dot.className = 'status-dot loading';
+  txt.textContent = 'Conectando…';
+
+  try {
+    const res = await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    const models = data.models?.map(m => m.name) || [];
+    ollamaConnected = true;
+    dot.className = 'status-dot connected';
+    txt.textContent = `Ollama: conectado (${models.length} modelos)`;
+    toast(`Ollama conectado ✓ — ${models.length} modelos disponibles`, 'ok');
+    closeOllama();
+  } catch {
+    ollamaConnected = false;
+    dot.className = 'status-dot';
+    txt.textContent = 'Ollama: no conectado';
+    toast('No se pudo conectar con Ollama', 'err');
+  }
+}
+
+async function callOllama(systemPrompt, userMsg) {
+  const res = await fetch(`${ollamaUrl}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: ollamaModel,
+      stream: false,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMsg }
+      ]
+    })
+  });
+  if (!res.ok) throw new Error('Ollama error');
+  const data = await res.json();
+  return data.message?.content || '';
+}
+
+const AI_SYSTEM = `Eres un experto en prompt engineering para investigación académica doctoral. 
+Analiza el prompt dado y responde ÚNICAMENTE con un objeto JSON válido (sin markdown, sin texto extra):
+{
+  "improved": "<versión mejorada del prompt, más clara, estructurada y efectiva>",
+  "tips": ["<consejo concreto 1>", "<consejo concreto 2>", "<consejo concreto 3>"],
+  "score": <puntuación del 1 al 10 del prompt original>
+}`;
+
+async function improveWithAI() {
+  const content = document.getElementById('fContent').value.trim();
+  if (!content) { toast('Escribe un prompt primero', 'err'); return; }
+  if (!ollamaConnected) { toast('Conecta Ollama primero (pie de página)', 'err'); openOllamaModal(); return; }
+
+  const btn = document.getElementById('aiBtn');
+  btn.textContent = '✦ Analizando…';
+  btn.disabled = true;
+
+  try {
+    const raw = await callOllama(AI_SYSTEM, `Analiza este prompt académico:\n\n${content}`);
+    const result = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    showAIResult(result, 'form');
+    toast('Análisis completado ✓', 'ok');
+  } catch (e) {
+    toast('Error al analizar. ¿Está corriendo Ollama?', 'err');
+  } finally {
+    btn.textContent = '✦ Mejorar con IA (requiere Ollama)';
+    btn.disabled = false;
+  }
+}
+
+async function improveDetailWithAI() {
+  const p = prompts.find(x => x.id === detailId);
+  if (!p) return;
+  if (!ollamaConnected) { toast('Conecta Ollama primero (pie de página)', 'err'); openOllamaModal(); return; }
+
+  const btn = document.getElementById('detailImproveBtn');
+  btn.textContent = '✦ Analizando…';
+  btn.disabled = true;
+
+  try {
+    const raw = await callOllama(AI_SYSTEM, `Analiza este prompt académico:\n\n${p.content}`);
+    const result = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    showAIResult(result, 'detail');
+    toast('Análisis completado ✓', 'ok');
+  } catch {
+    toast('Error al analizar. ¿Está corriendo Ollama?', 'err');
+  } finally {
+    btn.textContent = '✦ Mejorar con IA';
+    btn.disabled = false;
+  }
+}
+
+function showAIResult(result, mode) {
+  const tipsHTML = (result.tips||[]).map(t =>
+    `<div class="ai-tip"><span class="ai-tip-dot">◆</span><span>${t}</span></div>`
+  ).join('');
+
+  if (mode === 'form') {
+    document.getElementById('aiScore').innerHTML = result.score ? `Puntuación: ${result.score}/10` : '';
+    document.getElementById('aiContent').innerHTML = `
+      ${result.improved ? `
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-family:'DM Mono',monospace">VERSIÓN MEJORADA</div>
+          <div class="ai-result">${result.improved}</div>
+          <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="applyImproved()">← Usar esta versión</button>
+        </div>` : ''}
+      ${tipsHTML ? `
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-family:'DM Mono',monospace">CONSEJOS</div>
+          <div class="ai-tips">${tipsHTML}</div>
+        </div>` : ''}
+    `;
+    document.getElementById('aiPanel').style.display = 'flex';
+    window._aiImproved = result.improved;
+  } else {
+    document.getElementById('detailScore').innerHTML = result.score ? `Puntuación: ${result.score}/10` : '';
+    document.getElementById('detailAiContent').innerHTML = `
+      ${result.improved ? `<div style="margin-bottom:10px"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;font-family:'DM Mono',monospace">VERSIÓN MEJORADA</div><div class="ai-result">${result.improved}</div></div>` : ''}
+      ${tipsHTML ? `<div class="ai-tips">${tipsHTML}</div>` : ''}
+    `;
+    document.getElementById('detailAiSection').style.display = 'block';
+  }
+}
+
+function applyImproved() {
+  if (window._aiImproved) {
+    document.getElementById('fContent').value = window._aiImproved;
+    toast('Prompt mejorado aplicado ✓', 'ok');
+  }
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  const icons = { ok: '✓', err: '✕' };
+  el.textContent = (icons[type] || '') + ' ' + msg;
+  el.className = `toast ${type} show`;
+  setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ── AUTO-CONNECT OLLAMA ───────────────────────────────────────────────────────
+
+async function autoCheckOllama() {
+  try {
+    const res = await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(2000) });
+    if (res.ok) {
+      ollamaConnected = true;
+      document.getElementById('statusDot').className = 'status-dot connected';
+      document.getElementById('statusText').textContent = 'Ollama: conectado';
+    }
+  } catch { /* silently fail */ }
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+
+render();
+autoCheckOllama();
+</script>
+</body>
+</html>
